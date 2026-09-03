@@ -1,0 +1,11 @@
+{
+  "name": "fiber",
+  "private": true,
+  "scripts": {
+    "build": "tsc && esbuild src/index.ts --bundle --format=iife --platform=browser --outfile=dist/fiber.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.0.0"
+  }
+}
