@@ -1,6 +1,6 @@
 import type { FiberInstance, FiberNode, ReactDevToolsHook } from "./types";
 import { HookManager } from "./hook";
-import { walkFiber } from "./fiber";
+import { getFiberFlags, walkFiber } from "./fiber";
 import { Runtime as Runtime } from "./runtime";
 import { FiberBadgeElement } from "./badgeElement";
 import { FiberListElement } from "./fiberListElement";
@@ -46,13 +46,11 @@ function initialize(h: ReactDevToolsHook) {
                 list.clear()
 
                 walkFiber(root.current, (fiber) => {
-                    if (!(fiber.stateNode instanceof HTMLElement)) {
+                    if (!(fiber.stateNode instanceof HTMLElement))
                         return;
-                    }
                     
-                    if (fiber.flags === 0) {
+                    if (getFiberFlags(fiber.flags).length === 0 || getFiberFlags(fiber.subtreeFlags).length === 0)
                         return;
-                    }
 
                     runtime.update(fiber, (node) => {
                         node.rerenders++;

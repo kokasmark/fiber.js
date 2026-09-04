@@ -21,6 +21,67 @@
     }
   };
 
+  // src/types.ts
+  var FiberFlags = {
+    [1 << 0]: "PerformedWork",
+    [1 << 1]: "Placement",
+    [1 << 2]: "Update",
+    [1 << 3]: "ChildDeletion",
+    [1 << 4]: "ContentReset",
+    [1 << 5]: "Callback",
+    [1 << 6]: "DidCapture",
+    [1 << 7]: "Ref",
+    [1 << 8]: "Snapshot",
+    [1 << 9]: "Passive",
+    [1 << 10]: "Visibility",
+    [1 << 11]: "Hydrating",
+    [1 << 12]: "StoreConsistency",
+    [1 << 13]: "Incomplete",
+    [1 << 14]: "ShouldCapture",
+    [1 << 15]: "ForceClientRender",
+    [1 << 16]: "Forked",
+    [1 << 17]: "RefStatic",
+    [1 << 18]: "LayoutStatic",
+    [1 << 19]: "PassiveStatic"
+  };
+  var FiberTags = {
+    0: "FunctionComponent",
+    1: "ClassComponent",
+    2: "IndeterminateComponent",
+    3: "HostRoot",
+    4: "HostPortal",
+    5: "HostComponent",
+    6: "HostText",
+    7: "Fragment",
+    8: "Mode",
+    9: "ContextConsumer",
+    10: "ContextProvider",
+    11: "ForwardRef",
+    12: "Profiler",
+    13: "SuspenseComponent",
+    14: "MemoComponent",
+    15: "SimpleMemoComponent",
+    16: "LazyComponent",
+    17: "IncompleteClassComponent",
+    18: "DehydratedFragment",
+    19: "SuspenseListComponent",
+    21: "ScopeComponent",
+    22: "OffscreenComponent",
+    23: "LegacyHiddenComponent",
+    24: "CacheComponent",
+    25: "TracingMarkerComponent",
+    26: "HostHoistable",
+    27: "HostSingleton"
+  };
+  var FiberModes = {
+    0: "NoMode",
+    1: "ConcurrentMode",
+    2: "ProfileMode",
+    8: "StrictLegacyMode",
+    16: "StrictEffectsMode",
+    32: "SuspenseyImagesMode"
+  };
+
   // src/fiber.ts
   function walkFiber(fiber, visit) {
     if (!fiber) return;
@@ -52,31 +113,18 @@
     }
     return path;
   }
+  function getFiberFlags(flags) {
+    return Object.entries(FiberFlags).filter(([flag]) => flags & Number(flag)).map(([, name]) => name);
+  }
+  function getFiberTag(fiber) {
+    return FiberTags[fiber.tag];
+  }
+  function getFiberModes(mode) {
+    return Object.entries(FiberModes).filter(([value]) => Number(value) !== 0 && (mode & Number(value)) !== 0).map(([, name]) => name);
+  }
 
   // src/fiberNodeElement.ts
   var selected;
-  var flags = {
-    [1 << 0]: "PerformedWork",
-    [1 << 1]: "Placement",
-    [1 << 2]: "Update",
-    [1 << 3]: "ChildDeletion",
-    [1 << 4]: "ContentReset",
-    [1 << 5]: "Callback",
-    [1 << 6]: "DidCapture",
-    [1 << 7]: "Ref",
-    [1 << 8]: "Snapshot",
-    [1 << 9]: "Passive",
-    [1 << 10]: "Visibility",
-    [1 << 11]: "Hydrating",
-    [1 << 12]: "StoreConsistency",
-    [1 << 13]: "Incomplete",
-    [1 << 14]: "ShouldCapture",
-    [1 << 15]: "ForceClientRender",
-    [1 << 16]: "Forked",
-    [1 << 17]: "RefStatic",
-    [1 << 18]: "LayoutStatic",
-    [1 << 19]: "PassiveStatic"
-  };
   var FiberNodeElement = class {
     constructor(element, node) {
       this.hovered = false;
@@ -106,14 +154,18 @@
       this.previousStyles = element.style.cssText;
       this.badge = this.createBadge();
       this.panel = this.createPanel();
+      this.tag = this.createSection();
       this.flags = this.createSection();
-      this.props = this.createSection();
-      this.state = this.createSection();
+      this.subTreeFlags = this.createSection();
+      this.mode = this.createSection();
+      this.time = this.createSection();
       this.tree = this.createSection();
       this.panel.append(
+        this.tag,
         this.flags,
-        this.props,
-        this.state,
+        this.subTreeFlags,
+        this.mode,
+        this.time,
         this.tree
       );
       document.body.appendChild(this.panel);
@@ -153,23 +205,52 @@
       this.badge.style.opacity = "1";
     }
     showPanel() {
-      this.renderFlags();
       this.renderValue(
-        this.props,
-        "memoizedProps",
-        this.node.fiber.memoizedProps
+        this.tag,
+        "tag",
+        getFiberTag(this.node.fiber)
+      );
+      this.renderFlags();
+      this.renderList(
+        this.mode,
+        "mode",
+        getFiberModes(this.node.fiber.mode)
       );
       this.renderValue(
-        this.state,
-        "memoizedState",
-        this.node.fiber.memoizedState
+        this.time,
+        "time",
+        this.node.fiber.return?.actualDuration.toFixed(4)
       );
       this.renderTree();
       const rect = this.element.getBoundingClientRect();
+      this.positionPanel(rect);
+    }
+    positionPanel(rect) {
+      const gap = 8;
+      const padding = 8;
+      this.panel.style.display = "flex";
+      this.panel.style.opacity = "0";
       Object.assign(this.panel.style, {
-        left: `${rect.left}px`,
-        top: `${rect.bottom + 8}px`,
-        display: "flex",
+        left: "0px",
+        top: "0px"
+      });
+      const panelRect = this.panel.getBoundingClientRect();
+      let left = rect.left;
+      let top = rect.bottom + gap;
+      if (top + panelRect.height > window.innerHeight - padding) {
+        top = rect.top - panelRect.height - gap;
+      }
+      left = Math.max(
+        padding,
+        Math.min(left, window.innerWidth - panelRect.width - padding)
+      );
+      top = Math.max(
+        padding,
+        Math.min(top, window.innerHeight - panelRect.height - padding)
+      );
+      Object.assign(this.panel.style, {
+        left: `${left}px`,
+        top: `${top}px`,
         opacity: "1"
       });
     }
@@ -208,11 +289,13 @@
       this.renderList(
         this.flags,
         "flags",
-        this.getFlags(this.node.fiber.flags)
+        getFiberFlags(this.node.fiber.flags)
       );
-    }
-    getFlags(value) {
-      return Object.entries(flags).filter(([flag]) => value & Number(flag)).map(([, name]) => name);
+      this.renderList(
+        this.subTreeFlags,
+        "subtree flags",
+        getFiberFlags(this.node.fiber.subtreeFlags)
+      );
     }
     renderValue(panel, title, value) {
       panel.replaceChildren();
@@ -255,24 +338,14 @@
     }
     format(value) {
       try {
-        const result = JSON.stringify(
-          value,
-          (_, value2) => {
-            if (typeof value2 === "function") {
-              return `[Function ${value2.name || "anonymous"}]`;
-            }
-            return value2;
-          },
-          2
-        );
-        return result ?? String(value);
+        return JSON.stringify(value);
       } catch {
         return String(value);
       }
     }
     renderTree() {
       this.tree.replaceChildren();
-      this.addTitle(this.tree, "fiber tree");
+      this.addTitle(this.tree, "tree");
       for (const [index, fiber] of getFiberPath(
         this.node.fiber
       ).entries()) {
@@ -538,7 +611,9 @@
         opacity: ".5"
       });
       count.textContent = node.rerenders.toString();
-      row.append(dot, name, count);
+      const renderTime = document.createElement("span");
+      renderTime.textContent = node.fiber.return?.actualDuration.toFixed(2).toString() ?? "";
+      row.append(dot, name, count, renderTime);
       row.addEventListener("mouseenter", () => {
         node.element?.show();
         node.element?.showPanel();
@@ -658,12 +733,10 @@
       (original) => function(rendererID, root, ...args) {
         list.clear();
         walkFiber(root.current, (fiber) => {
-          if (!(fiber.stateNode instanceof HTMLElement)) {
+          if (!(fiber.stateNode instanceof HTMLElement))
             return;
-          }
-          if (fiber.flags === 0) {
+          if (getFiberFlags(fiber.flags).length === 0 || getFiberFlags(fiber.subtreeFlags).length === 0)
             return;
-          }
           runtime.update(fiber, (node) => {
             node.rerenders++;
             node.element?.onUpdate();

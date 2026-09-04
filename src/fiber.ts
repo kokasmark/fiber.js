@@ -1,4 +1,4 @@
-import { ComponentType, Fiber } from "./types";
+import { ComponentType, Fiber, FiberFlags, FiberModes, FiberTags } from "./types";
 
 export function walkFiber(
   fiber: Fiber | null,
@@ -57,4 +57,20 @@ export function getFiberPath(fiber: Fiber): Fiber[] {
     }
 
     return path;
+}
+
+export function getFiberFlags(flags: number) {
+    return Object.entries(FiberFlags)
+        .filter(([flag]) => flags & Number(flag))
+        .map(([, name]) => name);
+}
+
+export function getFiberTag(fiber: Fiber) {
+    return FiberTags[fiber.tag];
+}
+
+export function getFiberModes(mode: number) {
+    return Object.entries(FiberModes)
+        .filter(([value]) => Number(value) !== 0 && (mode & Number(value)) !== 0)
+        .map(([, name]) => name);
 }

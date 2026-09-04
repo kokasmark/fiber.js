@@ -1,30 +1,7 @@
-import type { FiberNode } from "./types";
-import { getFiberName, getFiberPath } from "./fiber";
+import { FiberFlags, type FiberNode } from "./types";
+import { getFiberFlags, getFiberModes, getFiberName, getFiberPath, getFiberTag } from "./fiber";
 
 let selected: FiberNodeElement | undefined;
-
-const flags: Record<number, string> = {
-    [1 << 0]: "PerformedWork",
-    [1 << 1]: "Placement",
-    [1 << 2]: "Update",
-    [1 << 3]: "ChildDeletion",
-    [1 << 4]: "ContentReset",
-    [1 << 5]: "Callback",
-    [1 << 6]: "DidCapture",
-    [1 << 7]: "Ref",
-    [1 << 8]: "Snapshot",
-    [1 << 9]: "Passive",
-    [1 << 10]: "Visibility",
-    [1 << 11]: "Hydrating",
-    [1 << 12]: "StoreConsistency",
-    [1 << 13]: "Incomplete",
-    [1 << 14]: "ShouldCapture",
-    [1 << 15]: "ForceClientRender",
-    [1 << 16]: "Forked",
-    [1 << 17]: "RefStatic",
-    [1 << 18]: "LayoutStatic",
-    [1 << 19]: "PassiveStatic",
-};
 
 export class FiberNodeElement {
     private element: HTMLElement;
@@ -33,9 +10,11 @@ export class FiberNodeElement {
     private badge: HTMLDivElement;
     private panel: HTMLDivElement;
 
+    private tag: HTMLDivElement;
     private flags: HTMLDivElement;
-    private props: HTMLDivElement;
-    private state: HTMLDivElement;
+    private subTreeFlags: HTMLDivElement;
+    private mode: HTMLDivElement;
+    private time: HTMLDivElement;
     private tree: HTMLDivElement;
 
     private timer?: number;
@@ -59,15 +38,19 @@ export class FiberNodeElement {
 
         this.panel = this.createPanel();
 
+        this.tag = this.createSection();
         this.flags = this.createSection();
-        this.props = this.createSection();
-        this.state = this.createSection();
+        this.subTreeFlags = this.createSection();
+        this.mode = this.createSection();
+        this.time = this.createSection();
         this.tree = this.createSection();
 
         this.panel.append(
+            this.tag,
             this.flags,
-            this.props,
-            this.state,
+            this.subTreeFlags,
+            this.mode,
+            this.time,
             this.tree
         );
 
@@ -123,28 +106,68 @@ export class FiberNodeElement {
     }
 
     public showPanel() {
+        this.renderValue(
+            this.tag,
+            "tag",
+            getFiberTag(this.node.fiber)
+        );
+
         this.renderFlags();
 
-        this.renderValue(
-            this.props,
-            "memoizedProps",
-            this.node.fiber.memoizedProps
+        this.renderList(
+            this.mode,
+            "mode",
+            getFiberModes(this.node.fiber.mode)
         );
 
         this.renderValue(
-            this.state,
-            "memoizedState",
-            this.node.fiber.memoizedState
+            this.time,
+            "time",
+            this.node.fiber.return?.actualDuration.toFixed(4)
         );
+        
 
         this.renderTree();
 
         const rect = this.element.getBoundingClientRect();
 
+        this.positionPanel(rect)
+    }
+
+    private positionPanel(rect:DOMRect) {
+        const gap = 8;
+        const padding = 8;
+
+        this.panel.style.display = "flex";
+        this.panel.style.opacity = "0";
+
         Object.assign(this.panel.style, {
-            left: `${rect.left}px`,
-            top: `${rect.bottom + 8}px`,
-            display: "flex",
+            left: "0px",
+            top: "0px",
+        });
+
+        const panelRect = this.panel.getBoundingClientRect();
+
+        let left = rect.left;
+        let top = rect.bottom + gap;
+
+        if (top + panelRect.height > window.innerHeight - padding) {
+            top = rect.top - panelRect.height - gap;
+        }
+
+        left = Math.max(
+            padding,
+            Math.min(left, window.innerWidth - panelRect.width - padding)
+        );
+
+        top = Math.max(
+            padding,
+            Math.min(top, window.innerHeight - panelRect.height - padding)
+        );
+
+        Object.assign(this.panel.style, {
+            left: `${left}px`,
+            top: `${top}px`,
             opacity: "1",
         });
     }
@@ -217,14 +240,14 @@ export class FiberNodeElement {
         this.renderList(
             this.flags,
             "flags",
-            this.getFlags(this.node.fiber.flags)
+            getFiberFlags(this.node.fiber.flags)
         );
-    }
 
-    private getFlags(value: number) {
-        return Object.entries(flags)
-            .filter(([flag]) => value & Number(flag))
-            .map(([, name]) => name);
+        this.renderList(
+            this.subTreeFlags,
+            "subtree flags",
+            getFiberFlags(this.node.fiber.subtreeFlags)
+        );
     }
 
     private renderValue(
@@ -297,19 +320,7 @@ export class FiberNodeElement {
 
     private format(value: unknown) {
         try {
-            const result = JSON.stringify(
-                value,
-                (_, value) => {
-                    if (typeof value === "function") {
-                        return `[Function ${value.name || "anonymous"}]`;
-                    }
-
-                    return value;
-                },
-                2
-            );
-
-            return result ?? String(value);
+            return JSON.stringify(value);
         } catch {
             return String(value);
         }
@@ -318,7 +329,7 @@ export class FiberNodeElement {
     private renderTree() {
         this.tree.replaceChildren();
 
-        this.addTitle(this.tree, "fiber tree");
+        this.addTitle(this.tree, "tree");
 
         for (const [index, fiber] of getFiberPath(
             this.node.fiber

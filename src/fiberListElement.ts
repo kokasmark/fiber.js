@@ -100,7 +100,10 @@ export class FiberListElement {
 
         count.textContent = node.rerenders.toString();
 
-        row.append(dot, name, count);
+        const renderTime = document.createElement("span");
+        renderTime.textContent = node.fiber.return?.actualDuration.toFixed(2).toString() ?? "";
+
+        row.append(dot, name, count, renderTime);
 
         row.addEventListener("mouseenter", () => {
             node.element?.show();
