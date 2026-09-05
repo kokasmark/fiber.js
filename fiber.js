@@ -159,6 +159,7 @@
       this.subTreeFlags = this.createSection();
       this.mode = this.createSection();
       this.time = this.createSection();
+      this.rerenders = this.createSection();
       this.tree = this.createSection();
       this.panel.append(
         this.tag,
@@ -166,6 +167,7 @@
         this.subTreeFlags,
         this.mode,
         this.time,
+        this.rerenders,
         this.tree
       );
       document.body.appendChild(this.panel);
@@ -199,7 +201,7 @@
       if (getComputedStyle(this.element).position === "static") {
         this.element.style.position = "relative";
       }
-      this.badge.textContent = `${getFiberName(this.node.fiber)} (${this.node.rerenders})`;
+      this.badge.textContent = `${getFiberName(this.node.fiber)} (${this.node.fiber?.return?.actualDuration.toFixed(2) ?? 0} ms)`;
       this.badge.style.background = `rgba(${r}, ${g}, ${b}, .9)`;
       this.badge.style.display = "block";
       this.badge.style.opacity = "1";
@@ -219,7 +221,12 @@
       this.renderValue(
         this.time,
         "time",
-        this.node.fiber.return?.actualDuration.toFixed(4)
+        `${this.node.fiber.return?.actualDuration.toFixed(2)} ms (${this.node.totalTime.toFixed(2)} ms)`
+      );
+      this.renderValue(
+        this.rerenders,
+        "rerenders",
+        this.node.rerenders
       );
       this.renderTree();
       const rect = this.element.getBoundingClientRect();
@@ -445,7 +452,8 @@
       if (!node) {
         node = {
           fiber,
-          rerenders: 0
+          rerenders: 0,
+          totalTime: 0
         };
         node.element = new FiberNodeElement(element, node);
         this.fibers.set(element, node);
@@ -612,8 +620,10 @@
       });
       count.textContent = node.rerenders.toString();
       const renderTime = document.createElement("span");
-      renderTime.textContent = node.fiber.return?.actualDuration.toFixed(2).toString() ?? "";
-      row.append(dot, name, count, renderTime);
+      renderTime.textContent = `${node.fiber.return?.actualDuration.toFixed(2).toString() ?? 0} ms`;
+      const totalTime = document.createElement("span");
+      totalTime.textContent = `${node.totalTime.toFixed(2).toString() ?? 0} ms`;
+      row.append(dot, name, count, renderTime, totalTime);
       row.addEventListener("mouseenter", () => {
         node.element?.show();
         node.element?.showPanel();
@@ -735,10 +745,11 @@
         walkFiber(root.current, (fiber) => {
           if (!(fiber.stateNode instanceof HTMLElement))
             return;
-          if (getFiberFlags(fiber.flags).length === 0 || getFiberFlags(fiber.subtreeFlags).length === 0)
+          if (getFiberFlags(fiber.flags).length === 0 && getFiberFlags(fiber.subtreeFlags).length === 0)
             return;
           runtime.update(fiber, (node) => {
             node.rerenders++;
+            node.totalTime += node.fiber.return?.actualDuration ?? 0;
             node.element?.onUpdate();
             list.onUpdateNode(node);
           });
