@@ -49,11 +49,12 @@ function initialize(h: ReactDevToolsHook) {
                     if (!(fiber.stateNode instanceof HTMLElement))
                         return;
                     
-                    if (getFiberFlags(fiber.flags).length === 0 || getFiberFlags(fiber.subtreeFlags).length === 0)
+                    if (getFiberFlags(fiber.flags).length === 0 && getFiberFlags(fiber.subtreeFlags).length === 0)
                         return;
 
                     runtime.update(fiber, (node) => {
                         node.rerenders++;
+                        node.totalTime += node.fiber.return?.actualDuration ?? 0
                         node.element?.onUpdate();
                         list.onUpdateNode(node);
                     });

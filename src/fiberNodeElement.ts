@@ -15,6 +15,7 @@ export class FiberNodeElement {
     private subTreeFlags: HTMLDivElement;
     private mode: HTMLDivElement;
     private time: HTMLDivElement;
+    private rerenders: HTMLDivElement;
     private tree: HTMLDivElement;
 
     private timer?: number;
@@ -43,6 +44,7 @@ export class FiberNodeElement {
         this.subTreeFlags = this.createSection();
         this.mode = this.createSection();
         this.time = this.createSection();
+        this.rerenders = this.createSection();
         this.tree = this.createSection();
 
         this.panel.append(
@@ -51,6 +53,7 @@ export class FiberNodeElement {
             this.subTreeFlags,
             this.mode,
             this.time,
+            this.rerenders,
             this.tree
         );
 
@@ -97,7 +100,7 @@ export class FiberNodeElement {
         }
 
         this.badge.textContent =
-            `${getFiberName(this.node.fiber)} (${this.node.rerenders})`;
+            `${getFiberName(this.node.fiber)} (${this.node.fiber?.return?.actualDuration.toFixed(2) ?? 0.00} ms)`;
 
         this.badge.style.background = `rgba(${r}, ${g}, ${b}, .9)`;
 
@@ -123,9 +126,14 @@ export class FiberNodeElement {
         this.renderValue(
             this.time,
             "time",
-            this.node.fiber.return?.actualDuration.toFixed(4)
+            `${this.node.fiber.return?.actualDuration.toFixed(2)} ms (${this.node.totalTime.toFixed(2)} ms)`
         );
         
+        this.renderValue(
+            this.rerenders,
+            "rerenders",
+            this.node.rerenders
+        );
 
         this.renderTree();
 

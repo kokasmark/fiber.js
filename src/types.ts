@@ -39,6 +39,7 @@ export interface FiberRoot {
 export interface FiberNode{
     fiber: Fiber;
     rerenders: number;
+    totalTime: number;
     element?: FiberNodeElement;
 }
 

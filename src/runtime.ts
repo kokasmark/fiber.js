@@ -17,6 +17,7 @@ export class Runtime {
             node = {
                 fiber,
                 rerenders: 0,
+                totalTime: 0,
             };
 
             node.element = new FiberNodeElement(element, node);

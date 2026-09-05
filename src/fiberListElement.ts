@@ -101,9 +101,12 @@ export class FiberListElement {
         count.textContent = node.rerenders.toString();
 
         const renderTime = document.createElement("span");
-        renderTime.textContent = node.fiber.return?.actualDuration.toFixed(2).toString() ?? "";
+        renderTime.textContent = `${node.fiber.return?.actualDuration.toFixed(2).toString() ?? 0.00} ms`;
 
-        row.append(dot, name, count, renderTime);
+        const totalTime = document.createElement("span");
+        totalTime.textContent = `${node.totalTime.toFixed(2).toString() ?? 0.00} ms`;
+
+        row.append(dot, name, count, renderTime, totalTime);
 
         row.addEventListener("mouseenter", () => {
             node.element?.show();
